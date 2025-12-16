@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Stock Startup</title>
+    <style>
+        /* General body */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #fff;
+            padding: 30px 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        /* Headings */
+        h2, h3 {
+            color: #333;
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        #logout-btn {
+            background-color: #dc3545;
+            color: white;
+            margin-bottom: 20px;
+            display: block;
+            width: 100%;
+        }
+
+        #logout-btn:hover {
+            background-color: #b02a37;
+        }
+
+        button.subscribe-btn {
+            background-color: #007bff;
+            color: white;
+            margin-top: 10px;
+        }
+
+        button.subscribe-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Select */
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        /* Stock boxes */
+        .stock-box {
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 650px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="welcome"></h2>
+    <button id="logout-btn" onclick="logout()">Logout</button>
+    <hr>
+
+    <div>
+        <h3>Subscribe to Stock</h3>
+        <select id="stockSelect">
+            <option>GOOG</option>
+            <option>TSLA</option>
+            <option>AMZN</option>
+            <option>META</option>
+            <option>NVDA</option>
+        </select>
+        <button class="subscribe-btn" onclick="subscribeStock()">Subscribe</button>
+    </div>
+
+    <h3>Your Subscribed Stocks</h3>
+    <div id="stockList"></div>
+</div>
+
+<script>
+/* --------- LOGIN CHECK --------- */
+const email = localStorage.getItem("email");
+if (!email) {
+    window.location.href = "login.html";
+}
+document.getElementById("welcome").innerText = "Welcome, " + email;
+
+/* --------- LOGOUT --------- */
+function logout() {
+    localStorage.removeItem("email");
+    window.location.href = "login.html";
+}
+
+/* --------- WEBSOCKET --------- */
+const socket = new WebSocket("ws://localhost:5000");
+let subscribed = [];
+
+socket.onopen = () => {
+    socket.send(JSON.stringify({ type: "login", email }));
+};
+
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "priceUpdate") {
+        const div = document.getElementById("stock-" + data.stock);
+        if (div) div.innerText = `${data.stock}: $${data.price}`;
+    }
+};
+
+/* --------- SUBSCRIBE STOCK --------- */
+function subscribeStock() {
+    const stock = document.getElementById("stockSelect").value;
+    if (!subscribed.includes(stock)) {
+        subscribed.push(stock);
+        socket.send(JSON.stringify({ type: "subscribe", stock }));
+
+        const box = document.createElement("div");
+        box.id = "stock-" + stock;
+        box.className = "stock-box";
+        box.innerText = `${stock}: Loading...`;
+        document.getElementById("stockList").appendChild(box);
+    } else {
+        alert("You are already subscribed to " + stock);
+    }
+}
+</script>
+
+</body>
+</html>
